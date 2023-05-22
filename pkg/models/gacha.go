@@ -33,6 +33,8 @@ func (u *User) CreateUser() *User {
 	return u
 }
 
+// Function defined to generate random string for token
+
 func generateRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)

@@ -15,7 +15,7 @@ import (
 var NewUser models.User
 
 /*
-TODO----
+TODO----(Task completed)
 
 [*] Handle case for empty name- return error (Error code 400), non exisiting user ID return error
 [*] Autogenerate Token Don't take it from user
@@ -41,6 +41,7 @@ func GetUserById(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	// Invalid ID error handling done here
 
 	userDetails, db := models.GetUserById(ID)
 	if db.Error != nil {
@@ -75,6 +76,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	//  Empty Username case has been handled here
 
 	if user.Name == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -95,19 +97,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// func DeleteUser(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	userId := vars["userId"]
-// 	ID, err := strconv.ParseInt(userId, 0, 0)
-// 	if err != nil {
-// 		fmt.Println("error while parsing")
-// 	}
-// 	user := models.DeleteUser(ID)
-// 	res, _ := json.Marshal(user)
-// 	w.WriteHeader(http.StatusOK)
-// 	w.Write(res)
-
-// }
+// UpdateUser does not show any reponse.
 
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	var updateUser = &models.User{}
@@ -126,9 +116,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		userDetails.Token = updateUser.Token
 	}
 	db.Save(&userDetails)
-	// res, _ := json.Marshal(userDetails)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	// w.Write(res)
 
 }
