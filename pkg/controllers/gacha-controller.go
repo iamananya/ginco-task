@@ -13,6 +13,7 @@ import (
 )
 
 var NewUser models.User
+var NewCharacter models.Character
 
 /*
 TODO----(Task completed)
@@ -119,4 +120,45 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
+}
+
+func CreateCharacter(w http.ResponseWriter, r *http.Request) {
+	character := &models.Character{}
+	requestBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	err = json.Unmarshal(requestBody, character)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// empty username
+
+	if character.Name == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	c := character.CreateCharacter()
+
+	res, err := json.Marshal(c)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(res)
+}
+
+func GetCharacters(w http.ResponseWriter, r *http.Request) {
+	characters := models.GetAllCharacters()
+
+	res, _ := json.Marshal(characters)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(res)
 }
