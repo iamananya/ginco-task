@@ -122,38 +122,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func CreateCharacter(w http.ResponseWriter, r *http.Request) {
-	character := &models.Character{}
-	requestBody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	err = json.Unmarshal(requestBody, character)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	// empty username
-
-	if character.Name == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	c := character.CreateCharacter()
-
-	res, err := json.Marshal(c)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	w.Write(res)
-}
-
-func GetCharacters(w http.ResponseWriter, r *http.Request) {
+func ListCharacters(w http.ResponseWriter, r *http.Request) {
 	characters := models.GetAllCharacters()
 
 	res, _ := json.Marshal(characters)
@@ -161,4 +130,39 @@ func GetCharacters(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(res)
+}
+
+func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
+
+	var reqBody models.GachaDrawRequest
+	err := json.NewDecoder(r.Body).Decode(&reqBody)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	fmt.Printf("Received request: %+v\n", reqBody)
+	characters := models.GetAllCharacters()
+	response := models.GachaDrawResponse{
+		Results: []models.CharacterResponse{},
+	}
+	// fmt.Println(reqBody.NumTrials)
+	for i := 0; i < reqBody.NumTrials; i++ {
+		character := models.DrawCharacter(characters) // Simulate drawing a character
+		// fmt.Println(character)
+		response.Results = append(response.Results, models.CharacterResponse{
+			CharacterID: fmt.Sprintf("Character-%d", character.ID),
+			Name:        character.Name,
+		})
+
+	}
+	respBody, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, "Error creating response", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(respBody)
+
 }

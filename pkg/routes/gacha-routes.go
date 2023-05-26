@@ -10,10 +10,7 @@ var RegisterUserRoute = func(router *mux.Router) {
 	router.HandleFunc("/user/", controllers.GetUser).Methods("GET")
 	router.HandleFunc("/user/{userId}", controllers.GetUserById).Methods("GET")
 	router.HandleFunc("/user/{userId}", controllers.UpdateUser).Methods("PUT")
-	router.HandleFunc("/characters/", controllers.CreateCharacter).Methods("POST")
-	router.HandleFunc("/characters/list/", controllers.GetCharacters).Methods("GET")
+	router.HandleFunc("/characters/list/", controllers.ListCharacters).Methods("GET")
+	router.HandleFunc("/gacha/draw/", controllers.HandleGachaDraw).Methods("POST")
 	// router.HandleFunc("/user/characters/", controllers.CreateUserCharacter).Methods("POST")
-
-	// router.HandleFunc("/user/{userId}", controllers.DeleteUser).Methods("DELETE")
-
 }
