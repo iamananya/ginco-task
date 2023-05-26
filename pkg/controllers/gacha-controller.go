@@ -14,7 +14,7 @@ var NewUser models.User
 var NewCharacter models.Character
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
-	// Authenticate user using x-token in headers to get user details
+	// Authenticate user using x-token in headers to get user details-----
 	token := r.Header.Get("X-Token")
 	user := models.GetAllUsers(token)
 
@@ -68,7 +68,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
-	// Authenticate user using x-token in headers to get user details
+	// Authenticate user using x-token in headers to get user details--------
 
 	var updateUser models.User
 	utils.ParseBody(r, &updateUser)
