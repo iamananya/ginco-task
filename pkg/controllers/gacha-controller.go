@@ -13,33 +13,18 @@ import (
 var NewUser models.User
 var NewCharacter models.Character
 
-/*
-TODO----(Task completed)
-
-[*] Handle case for empty name- return error (Error code 400), non exisiting user ID return error
-[*] Autogenerate Token Don't take it from user
-[*] For UpdateUser don't show response
-[*] Check swagger yaml for responses.
-
-*/
-
 func GetUser(w http.ResponseWriter, r *http.Request) {
-	// Extract the X-Token value from the request headers
+	// Authenticate user using x-token in headers to get user details-----
 	token := r.Header.Get("X-Token")
-
-	// Use the X-Token value to query the user from the database
 	user := models.GetAllUsers(token)
 
 	if user == nil {
-		// User not found, return an appropriate error response
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	// Return the user data as a JSON response
 	res, err := json.Marshal(user)
 	if err != nil {
-		// Error while marshaling JSON, return an error response
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -82,26 +67,20 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// UpdateUser does not show any reponse.
-
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
+	// Authenticate user using x-token in headers to get user details--------
+
 	var updateUser models.User
 	utils.ParseBody(r, &updateUser)
-
-	// Extract the X-Token value from the request headers
 	token := r.Header.Get("X-Token")
-
-	// Retrieve the user based on the token
 	user := models.GetUserByToken(token)
 	fmt.Print(user)
 
 	if user == nil {
-		// User not found, return an appropriate error response
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	// Update the user details if the fields are not empty
 	if updateUser.Name != "" {
 		user[0].Name = updateUser.Name
 	}
@@ -109,10 +88,8 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		user[0].Token = updateUser.Token
 	}
 
-	// Save the updated user details
 	err := models.UpdateUser(&user[0])
 	if err != nil {
-		// Error occurred while updating user, return an appropriate error response
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
