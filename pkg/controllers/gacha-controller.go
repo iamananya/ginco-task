@@ -119,7 +119,7 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Printf("Received request: %+v\n", reqBody)
 	characters := models.GetAllCharacters()
-	characterPool := generatecharacterPool(characters)
+	characterPool := generateCharacterPool(characters)
 	response := models.GachaDrawResponse{
 		Results: []models.CharacterResponse{},
 	}
@@ -145,7 +145,7 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 	w.Write(respBody)
 
 }
-func generatecharacterPool(characters []models.Character) []models.Character {
+func generateCharacterPool(characters []models.Character) []models.Character {
 	var characterPool []models.Character
 
 	for _, character := range characters {

@@ -106,6 +106,7 @@ func GetAllUsers(token string) []User {
 	if token != "" {
 		return GetUserByToken(token)
 	}
+	return nil
 
 	// If no token is provided, retrieve all users
 	// var users []User
