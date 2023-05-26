@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 
-	"github.com/gorilla/mux"
 	"github.com/iamananya/ginco-task/pkg/models"
 	"github.com/iamananya/ginco-task/pkg/utils"
 )
@@ -26,43 +24,29 @@ TODO----(Task completed)
 */
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
-	newUsers := models.GetAllUsers()
-	res, _ := json.Marshal(newUsers)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(res)
-}
+	// Extract the X-Token value from the request headers
+	token := r.Header.Get("X-Token")
 
-func GetUserById(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userId := vars["userId"]
-	ID, err := strconv.ParseInt(userId, 0, 0)
-	if err != nil {
-		fmt.Println("error while parsing")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	// Invalid ID error handling done here
+	// Use the X-Token value to query the user from the database
+	user := models.GetAllUsers(token)
 
-	userDetails, db := models.GetUserById(ID)
-	if db.Error != nil {
-		if db.RecordNotFound() {
-			w.WriteHeader(http.StatusNotFound)
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
+	if user == nil {
+		// User not found, return an appropriate error response
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	res, err := json.Marshal(userDetails)
+	// Return the user data as a JSON response
+	res, err := json.Marshal(user)
 	if err != nil {
+		// Error while marshaling JSON, return an error response
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(res)
-
 }
 
 func CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -101,28 +85,44 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 // UpdateUser does not show any reponse.
 
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
-	var updateUser = &models.User{}
-	utils.ParseBody(r, updateUser)
-	vars := mux.Vars(r)
-	userId := vars["userId"]
-	ID, err := strconv.ParseInt(userId, 0, 0)
-	if err != nil {
-		fmt.Println("error while parsing")
+	var updateUser models.User
+	utils.ParseBody(r, &updateUser)
+
+	// Extract the X-Token value from the request headers
+	token := r.Header.Get("X-Token")
+
+	// Retrieve the user based on the token
+	user := models.GetUserByToken(token)
+	fmt.Print(user)
+
+	if user == nil {
+		// User not found, return an appropriate error response
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
-	userDetails, db := models.GetUserById(ID)
+
+	// Update the user details if the fields are not empty
 	if updateUser.Name != "" {
-		userDetails.Name = updateUser.Name
+		user[0].Name = updateUser.Name
 	}
 	if updateUser.Token != "" {
-		userDetails.Token = updateUser.Token
+		user[0].Token = updateUser.Token
 	}
-	db.Save(&userDetails)
+
+	// Save the updated user details
+	err := models.UpdateUser(&user[0])
+	if err != nil {
+		// Error occurred while updating user, return an appropriate error response
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-
 }
 
 func ListCharacters(w http.ResponseWriter, r *http.Request) {
+
 	characters := models.GetAllCharacters()
 
 	res, _ := json.Marshal(characters)
@@ -142,12 +142,13 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Printf("Received request: %+v\n", reqBody)
 	characters := models.GetAllCharacters()
+	characterPool := generatecharacterPool(characters)
 	response := models.GachaDrawResponse{
 		Results: []models.CharacterResponse{},
 	}
 	// fmt.Println(reqBody.NumTrials)
 	for i := 0; i < reqBody.NumTrials; i++ {
-		character := models.DrawCharacter(characters) // Simulate drawing a character
+		character := models.DrawCharacter(characters, characterPool) // Simulate drawing a character
 		fmt.Println(character)
 		response.Results = append(response.Results, models.CharacterResponse{
 			CharacterID: fmt.Sprintf("Character-%d", character.ID),
@@ -166,4 +167,30 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(respBody)
 
+}
+func generatecharacterPool(characters []models.Character) []models.Character {
+	var characterPool []models.Character
+
+	for _, character := range characters {
+		rarity := character.Rarity
+
+		// Assign the probability based on rarity
+		var probability int
+		switch rarity {
+		case "SSR":
+			probability = 5
+		case "SR":
+			probability = 15
+		case "R":
+			probability = 80
+		}
+
+		// Add the character to the pool multiple times based on its probability
+		poolSize := probability
+		for i := 0; i < poolSize; i++ {
+			characterPool = append(characterPool, character)
+		}
+	}
+
+	return characterPool
 }
