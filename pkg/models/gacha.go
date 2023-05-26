@@ -108,9 +108,9 @@ func GetAllUsers(token string) []User {
 	}
 
 	// If no token is provided, retrieve all users
-	var users []User
-	db.Find(&users)
-	return users
+	// var users []User
+	// db.Find(&users)
+	// return users
 }
 
 func UpdateUser(user *User) error {
