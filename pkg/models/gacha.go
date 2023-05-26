@@ -1,8 +1,8 @@
 package models
 
 import (
-	"math/rand"
-	"time"
+	"crypto/rand"
+	"math/big"
 
 	"github.com/iamananya/ginco-task/pkg/config"
 	"github.com/jinzhu/gorm"
@@ -76,8 +76,6 @@ func init() {
 }
 
 func (u *User) CreateUser() *User {
-	rand.Seed(time.Now().UnixNano())
-
 	u.Token = generateRandomString(30)
 	db.NewRecord(u)
 	db.Create(&u)
@@ -85,26 +83,44 @@ func (u *User) CreateUser() *User {
 }
 
 // Function defined to generate random string for token
-
 func generateRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	charsetLength := big.NewInt(int64(len(charset)))
 	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[rand.Intn(len(charset))]
+	for i := 0; i < length; i++ {
+		randomIndex, _ := rand.Int(rand.Reader, charsetLength)
+		b[i] = charset[randomIndex.Int64()]
 	}
 	return string(b)
 }
 
-func GetAllUsers() []User {
-	var Users []User
-	db.Find(&Users)
-	return Users
+func GetUserByToken(token string) []User {
+	var users []User
+	db.Where("token = ?", token).Find(&users)
+	return users
 }
 
-func GetUserById(Id int64) (*User, *gorm.DB) {
-	var getUser User
-	db := db.Where("ID=?", Id).Find(&getUser)
-	return &getUser, db
+func GetAllUsers(token string) []User {
+	// If a token is provided, retrieve users by token
+	if token != "" {
+		return GetUserByToken(token)
+	}
+
+	// If no token is provided, retrieve all users
+	var users []User
+	db.Find(&users)
+	return users
+}
+
+func UpdateUser(user *User) error {
+
+	// Update the user details in the database
+	if err := db.Save(user).Error; err != nil {
+		// Error occurred while updating user
+		return err
+	}
+
+	return nil
 }
 
 func GetAllCharacters() []Character {
@@ -117,36 +133,11 @@ func (uc *UserCharacter) CreateUserCharacter() *UserCharacter {
 	return uc
 }
 
-func DrawCharacter(characters []Character) Character {
-	rand.Seed(time.Now().UnixNano())
+func DrawCharacter(characters []Character, characterPool []Character) Character {
+	randIndex, _ := rand.Int(rand.Reader, big.NewInt(int64(len(characterPool))))
 
-	var rarityPool []Character
-
-	// Create a pool of characters based on rarity and generate the probabilities
-	for _, character := range characters {
-		rarity := character.Rarity
-
-		// Assign the probability based on rarity
-		var probability float64
-		switch rarity {
-		case "SSR":
-			probability = 0.05
-		case "SR":
-			probability = 0.15
-		case "R":
-			probability = 0.8
-		}
-
-		// Add the character to the pool multiple times based on its probability
-		for i := 0; i < int(probability*100); i++ {
-			rarityPool = append(rarityPool, character)
-			// fmt.Println(rarityPool)
-		}
-	}
-
-	// Select a random character from the rarity pool
-	index := rand.Intn(len(rarityPool))
-	selectedCharacter := rarityPool[index]
+	index := int(randIndex.Int64())
+	selectedCharacter := characterPool[index]
 
 	// Save the gacha result in the database
 	gachaResult := GachaResult{
@@ -157,55 +148,6 @@ func DrawCharacter(characters []Character) Character {
 
 	return selectedCharacter
 }
-
-/*
-The below function is used to find the maximum probable characters
-*/
-// func DrawCharacter(characters []Character) Character {
-// 	rand.Seed(time.Now().UnixNano())
-
-// 	var maxProbability float64
-// 	var maxProbabilityCharacters []Character
-
-// 	// Create a pool of characters based on rarity and generate the probabilities
-// 	for _, character := range characters {
-// 		rarity := character.Rarity
-
-// 		// Assign the probability based on rarity
-// 		var probability float64
-// 		switch rarity {
-// 		case "SSR":
-// 			probability = 0.05
-// 		case "SR":
-// 			probability = 0.15
-// 		case "R":
-// 			probability = 0.8
-// 		}
-
-// 		// Update the maximum probability and reset the character pool if a higher probability is found
-// 		if probability > maxProbability {
-// 			maxProbability = probability
-// 			maxProbabilityCharacters = []Character{character}
-// 		} else if probability == maxProbability {
-// 			// Add the character to the pool only if it is not already present
-// 			isDuplicate := false
-// 			for _, c := range maxProbabilityCharacters {
-// 				if c.ID == character.ID {
-// 					isDuplicate = true
-// 					break
-// 				}
-// 			}
-// 			if !isDuplicate {
-// 				maxProbabilityCharacters = append(maxProbabilityCharacters, character)
-// 			}
-// 		}
-// 	}
-
-// 	// Select a random character from the pool of characters with the maximum probability
-// 	index := rand.Intn(len(maxProbabilityCharacters))
-// 	return maxProbabilityCharacters[index]
-// }
-
 func (gr *GachaResult) SaveGachaResult() error {
 	db := config.GetDB()
 	err := db.Create(gr).Error
