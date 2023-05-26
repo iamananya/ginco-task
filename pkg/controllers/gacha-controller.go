@@ -147,7 +147,7 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 		Results: []models.CharacterResponse{},
 	}
 	// fmt.Println(reqBody.NumTrials)
-	for i := 0; i < reqBody.NumTrials; i++ {
+	for i := 0; i < reqBody.Times; i++ {
 		character := models.DrawCharacter(characters, characterPool) // Simulate drawing a character
 		fmt.Println(character)
 		response.Results = append(response.Results, models.CharacterResponse{

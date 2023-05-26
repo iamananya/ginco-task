@@ -52,7 +52,7 @@ type GachaResult struct {
 }
 
 type GachaDrawRequest struct {
-	NumTrials int `json:"num_trials"`
+	Times int `json:"times"`
 }
 
 type GachaDrawResponse struct {
