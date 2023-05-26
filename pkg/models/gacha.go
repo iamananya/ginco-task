@@ -82,7 +82,7 @@ func (u *User) CreateUser() *User {
 	return u
 }
 
-// Function defined to generate random string for token
+// Function defined to generate random string for token---
 func generateRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	charsetLength := big.NewInt(int64(len(charset)))
@@ -94,7 +94,7 @@ func generateRandomString(length int) string {
 	return string(b)
 }
 
-// Function used to verify user token
+// Function used to verify user token-----
 func GetUserByToken(token string) []User {
 	var users []User
 	db.Where("token = ?", token).Find(&users)
