@@ -148,13 +148,14 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println(reqBody.NumTrials)
 	for i := 0; i < reqBody.NumTrials; i++ {
 		character := models.DrawCharacter(characters) // Simulate drawing a character
-		// fmt.Println(character)
+		fmt.Println(character)
 		response.Results = append(response.Results, models.CharacterResponse{
 			CharacterID: fmt.Sprintf("Character-%d", character.ID),
 			Name:        character.Name,
 		})
 
 	}
+
 	respBody, err := json.Marshal(response)
 	if err != nil {
 		http.Error(w, "Error creating response", http.StatusInternalServerError)
