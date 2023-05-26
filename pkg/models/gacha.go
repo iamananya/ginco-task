@@ -45,6 +45,11 @@ type UserCharacter struct {
 	Synergy           bool    `json:"synergy"`
 	Evolution         bool    `json:"evolution"`
 }
+type GachaResult struct {
+	gorm.Model
+	CharacterID   uint   `gorm:"index" json:"character_id"`
+	CharacterName string `json:"character_name"`
+}
 
 type GachaDrawRequest struct {
 	NumTrials int `json:"num_trials"`
@@ -67,6 +72,7 @@ func init() {
 	db.AutoMigrate(&Character{})
 	db.Model(&Character{}).ModifyColumn("name", "varchar(30)")
 	db.AutoMigrate(&UserCharacter{})
+	db.AutoMigrate(&GachaResult{})
 }
 
 func (u *User) CreateUser() *User {
@@ -140,8 +146,16 @@ func DrawCharacter(characters []Character) Character {
 
 	// Select a random character from the rarity pool
 	index := rand.Intn(len(rarityPool))
-	print()
-	return rarityPool[index]
+	selectedCharacter := rarityPool[index]
+
+	// Save the gacha result in the database
+	gachaResult := GachaResult{
+		CharacterID:   selectedCharacter.ID,
+		CharacterName: selectedCharacter.Name,
+	}
+	_ = gachaResult.SaveGachaResult()
+
+	return selectedCharacter
 }
 
 /*
@@ -191,3 +205,9 @@ The below function is used to find the maximum probable characters
 // 	index := rand.Intn(len(maxProbabilityCharacters))
 // 	return maxProbabilityCharacters[index]
 // }
+
+func (gr *GachaResult) SaveGachaResult() error {
+	db := config.GetDB()
+	err := db.Create(gr).Error
+	return err
+}
