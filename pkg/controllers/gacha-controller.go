@@ -15,13 +15,7 @@ var NewCharacter models.Character
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
 	// Authenticate user using x-token in headers to get user details-----
-	token := r.Header.Get("X-Token")
-	user := models.GetAllUsers(token)
-
-	if user == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
+	user := r.Context().Value("user").(models.User)
 
 	res, err := json.Marshal(user)
 	if err != nil {
@@ -68,27 +62,21 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
-	// Authenticate user using x-token in headers to get user details--------
+	// Retrieve the user from the context
+	user := r.Context().Value("user").(models.User)
 
 	var updateUser models.User
 	utils.ParseBody(r, &updateUser)
-	token := r.Header.Get("X-Token")
-	user := models.GetUserByToken(token)
 	fmt.Print(user)
 
-	if user == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
 	if updateUser.Name != "" {
-		user[0].Name = updateUser.Name
+		user.Name = updateUser.Name
 	}
 	if updateUser.Token != "" {
-		user[0].Token = updateUser.Token
+		user.Token = updateUser.Token
 	}
 
-	err := models.UpdateUser(&user[0])
+	err := models.UpdateUser(&user)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
