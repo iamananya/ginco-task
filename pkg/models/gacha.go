@@ -2,6 +2,7 @@ package models
 
 import (
 	"crypto/rand"
+	"errors"
 	"math/big"
 
 	"github.com/iamananya/ginco-task/pkg/config"
@@ -66,20 +67,36 @@ type CharacterResponse struct {
 func init() {
 	config.Connect()
 	db = config.GetDB()
-	db.AutoMigrate(&User{})
-	db.Model(&User{}).ModifyColumn("name", "varchar(30)")
-	db.Model(&User{}).ModifyColumn("token", "char(30)")
-	db.AutoMigrate(&Character{})
-	db.Model(&Character{}).ModifyColumn("name", "varchar(30)")
-	db.AutoMigrate(&UserCharacter{})
-	db.AutoMigrate(&GachaResult{})
+	if err := db.AutoMigrate(&User{}).Error; err != nil {
+		panic("Failed to migrate User model: " + err.Error())
+	}
+	if err := db.Model(&User{}).ModifyColumn("name", "varchar(30)").Error; err != nil {
+		panic("Failed to modify column 'name' in User model: " + err.Error())
+	}
+	if err := db.Model(&User{}).ModifyColumn("token", "char(30)").Error; err != nil {
+		panic("Failed to modify column 'token' in User model: " + err.Error())
+	}
+	if err := db.AutoMigrate(&Character{}).Error; err != nil {
+		panic("Failed to migrate Character model: " + err.Error())
+	}
+	if err := db.Model(&Character{}).ModifyColumn("name", "varchar(30)").Error; err != nil {
+		panic("Failed to modify column 'name' in Character model: " + err.Error())
+	}
+	if err := db.AutoMigrate(&UserCharacter{}).Error; err != nil {
+		panic("Failed to migrate UserCharacter model: " + err.Error())
+	}
+	if err := db.AutoMigrate(&GachaResult{}).Error; err != nil {
+		panic("Failed to migrate GachaResult model: " + err.Error())
+	}
 }
 
-func (u *User) CreateUser() *User {
+func (u *User) CreateUser() (*User, error) {
 	u.Token = generateRandomString(30)
 	db.NewRecord(u)
-	db.Create(&u)
-	return u
+	if err := db.Create(u).Error; err != nil {
+		return nil, err
+	}
+	return u, nil
 }
 
 // Function defined to generate random string for token---
@@ -95,23 +112,12 @@ func generateRandomString(length int) string {
 }
 
 // Function used to verify user token-----
-func GetUserByToken(token string) []User {
+func GetUserByToken(token string) ([]User, error) {
 	var users []User
-	db.Where("token = ?", token).Find(&users)
-	return users
-}
-
-func GetAllUsers(token string) []User {
-
-	if token != "" {
-		return GetUserByToken(token)
+	if err := db.Where("token = ?", token).Find(&users).Error; err != nil {
+		return nil, err
 	}
-	return nil
-
-	// If no token is provided, retrieve all users
-	// var users []User
-	// db.Find(&users)
-	// return users
+	return users, nil
 }
 
 func UpdateUser(user *User) error {
@@ -123,30 +129,40 @@ func UpdateUser(user *User) error {
 	return nil
 }
 
-func GetAllCharacters() []Character {
-	var Characters []Character
-	db.Find(&Characters)
-	return Characters
+func GetAllCharacters() ([]Character, error) {
+	var characters []Character
+	if err := db.Find(&characters).Error; err != nil {
+		return nil, err
+	}
+	return characters, nil
 }
 func (uc *UserCharacter) CreateUserCharacter() *UserCharacter {
 	db.Create(&uc)
 	return uc
 }
 
-func DrawCharacter(characters []Character, characterPool []Character) Character {
-	randIndex, _ := rand.Int(rand.Reader, big.NewInt(int64(len(characterPool))))
+func DrawCharacter(characters []Character, characterPool []Character) (*Character, error) {
 
+	if len(characterPool) == 0 {
+		return nil, errors.New("empty character pool")
+	}
+	randIndex, err := rand.Int(rand.Reader, big.NewInt(int64(len(characterPool))))
+	if err != nil {
+		return nil, err
+	}
 	index := int(randIndex.Int64())
-	selectedCharacter := characterPool[index]
+	selectedCharacter := &characterPool[index]
 
 	// Save the gacha result in the database
 	gachaResult := GachaResult{
 		CharacterID:   selectedCharacter.ID,
 		CharacterName: selectedCharacter.Name,
 	}
-	_ = gachaResult.SaveGachaResult()
+	if err := gachaResult.SaveGachaResult(); err != nil {
+		return nil, err
+	}
 
-	return selectedCharacter
+	return selectedCharacter, nil
 }
 func (gr *GachaResult) SaveGachaResult() error {
 	db := config.GetDB()

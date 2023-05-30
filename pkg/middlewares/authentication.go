@@ -17,7 +17,11 @@ func AuthenticationMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		users := models.GetUserByToken(token)
+		users, err := models.GetUserByToken(token)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 		if len(users) == 0 {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
