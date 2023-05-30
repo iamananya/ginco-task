@@ -46,8 +46,12 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	u := user.CreateUser()
+	fmt.Print(user.Name, user.Token)
+	u, err := user.CreateUser()
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	// Marshal the user object into JSON
 	res, err := json.Marshal(u)
@@ -87,10 +91,23 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListCharacters(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value("user").(models.User)
+	if !ok {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	fmt.Print(user.Name)
+	characters, err := models.GetAllCharacters()
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
-	characters := models.GetAllCharacters()
-
-	res, _ := json.Marshal(characters)
+	res, err := json.Marshal(characters)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -98,7 +115,12 @@ func ListCharacters(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
-
+	user, ok := r.Context().Value("user").(models.User)
+	if !ok {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	fmt.Print(user.Name)
 	var reqBody models.GachaDrawRequest
 	err := json.NewDecoder(r.Body).Decode(&reqBody)
 	if err != nil {
@@ -106,14 +128,22 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Printf("Received request: %+v\n", reqBody)
-	characters := models.GetAllCharacters()
+	characters, err := models.GetAllCharacters()
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	characterPool := generateCharacterPool(characters)
 	response := models.GachaDrawResponse{
 		Results: []models.CharacterResponse{},
 	}
 	// fmt.Println(reqBody.NumTrials)
 	for i := 0; i < reqBody.Times; i++ {
-		character := models.DrawCharacter(characters, characterPool) // Simulate drawing a character
+		character, err := models.DrawCharacter(characters, characterPool) // Simulate drawing a character
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 		fmt.Println(character)
 		response.Results = append(response.Results, models.CharacterResponse{
 			CharacterID: fmt.Sprintf("Character-%d", character.ID),
