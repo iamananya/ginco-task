@@ -16,6 +16,6 @@ func main() {
 	// Apply authentication middleware to all routes
 	authenticatedRouter := middlewares.AuthenticationMiddleware(r.ServeHTTP)
 
-	http.Handle("/", authenticatedRouter)
+	// http.Handle("/", authenticatedRouter)
 	log.Fatal(http.ListenAndServe("localhost:9010", authenticatedRouter))
 }
