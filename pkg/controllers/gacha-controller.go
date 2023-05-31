@@ -10,8 +10,8 @@ import (
 	"github.com/iamananya/ginco-task/pkg/utils"
 )
 
-var NewUser models.User
-var NewCharacter models.Character
+// var NewUser models.User
+// var NewCharacter models.Character
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
 	// Authenticate user using x-token in headers to get user details-----
