@@ -1,11 +1,13 @@
 package controllers
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net/http"
-	"sync"
 
 	"github.com/iamananya/ginco-task/pkg/models"
 	"github.com/iamananya/ginco-task/pkg/utils"
@@ -141,59 +143,24 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	characterPool := generateCharacterPool(characters)
+	characterPool := GenerateCharacterPool(characters)
 	response := models.GachaDrawResponse{
 		Results: make([]models.CharacterResponse, reqBody.Times),
 	}
 
-	// A buffered channel to receive the drawn characters
-	drawnCharacters := make(chan models.CharacterResponse, reqBody.Times)
-
-	//  WaitGroup to synchronize goroutines
-	var wg sync.WaitGroup
-
-	// Worker pool with a fixed number of goroutines
-	numWorkers := 10
-	tasks := make(chan int, reqBody.Times)
-
-	// Start goroutines to process tasks concurrently
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for range tasks {
-				character, err := models.DrawCharacter(characters, characterPool) // Simulate drawing a character
-				if err != nil {
-					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-					return
-				}
-				characterResponse := models.CharacterResponse{
-					CharacterID: fmt.Sprintf("Character-%d", character.ID),
-					Name:        character.Name,
-					Rarity:      character.Rarity,
-				}
-				drawnCharacters <- characterResponse
-			}
-		}()
-	}
-
-	// Enqueue tasks
 	for i := 0; i < reqBody.Times; i++ {
-		tasks <- i
-	}
+		character, err := DrawCharacter(&characterPool)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 
-	// Close the tasks channel and wait for all goroutines to finish
-	go func() {
-		close(tasks)
-		wg.Wait()
-		close(drawnCharacters)
-	}()
-
-	// Collect the drawn characters from the channel and populate the response
-	i := 0
-	for characterResponse := range drawnCharacters {
+		characterResponse := models.CharacterResponse{
+			CharacterID: fmt.Sprintf("Character-%d", character.ID),
+			Name:        character.Name,
+			Rarity:      character.Rarity,
+		}
 		response.Results[i] = characterResponse
-		i++
 	}
 
 	respBody, err := json.Marshal(response)
@@ -207,14 +174,14 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 	w.Write(respBody)
 }
 
-func generateCharacterPool(characters []models.Character) []models.Character {
-	var characterPool []models.Character
+func GenerateCharacterPool(characters []models.Character) []*models.Character {
+	characterPool := make([]*models.Character, 0)
+	probabilityMap := make(map[uint]int)
 
 	for _, character := range characters {
 		rarity := character.Rarity
-
-		// Assign the probability based on rarity
 		var probability int
+
 		switch rarity {
 		case "SSR":
 			probability = 5
@@ -224,12 +191,44 @@ func generateCharacterPool(characters []models.Character) []models.Character {
 			probability = 80
 		}
 
-		// Add the character to the pool multiple times based on its probability
-		poolSize := probability
-		for i := 0; i < poolSize; i++ {
+		probabilityMap[character.ID] = probability
+	}
+
+	for characterID, probability := range probabilityMap {
+		character := FindCharacterByID(characters, characterID)
+		for i := 0; i < probability; i++ {
 			characterPool = append(characterPool, character)
 		}
 	}
 
 	return characterPool
+}
+
+func FindCharacterByID(characters []models.Character, characterID uint) *models.Character {
+	for _, character := range characters {
+		if character.ID == characterID {
+			return &character
+		}
+	}
+	return nil
+}
+
+func DrawCharacter(characterPool *[]*models.Character) (*models.Character, error) {
+	poolSize := len(*characterPool)
+	if poolSize == 0 {
+		return nil, errors.New("empty character pool")
+	}
+
+	// Randomly select a character from the pool
+	randIndex, err := rand.Int(rand.Reader, big.NewInt(int64(poolSize)))
+	if err != nil {
+		return nil, errors.New("failed to generate random number")
+	}
+	index := int(randIndex.Int64())
+	character := (*characterPool)[index]
+
+	// Remove the selected character from the pool
+	*characterPool = append((*characterPool)[:index], (*characterPool)[index+1:]...)
+
+	return character, nil
 }

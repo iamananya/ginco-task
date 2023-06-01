@@ -2,7 +2,6 @@ package models
 
 import (
 	"crypto/rand"
-	"errors"
 	"math/big"
 
 	"github.com/iamananya/ginco-task/pkg/config"
@@ -141,29 +140,6 @@ func (uc *UserCharacter) CreateUserCharacter() *UserCharacter {
 	return uc
 }
 
-func DrawCharacter(characters []Character, characterPool []Character) (*Character, error) {
-
-	if len(characterPool) == 0 {
-		return nil, errors.New("empty character pool")
-	}
-	randIndex, err := rand.Int(rand.Reader, big.NewInt(int64(len(characterPool))))
-	if err != nil {
-		return nil, err
-	}
-	index := int(randIndex.Int64())
-	selectedCharacter := &characterPool[index]
-
-	// Save the gacha result in the database
-	gachaResult := GachaResult{
-		CharacterID:   selectedCharacter.ID,
-		CharacterName: selectedCharacter.Name,
-	}
-	if err := gachaResult.SaveGachaResult(); err != nil {
-		return nil, err
-	}
-
-	return selectedCharacter, nil
-}
 func (gr *GachaResult) SaveGachaResult() error {
 	db := config.GetDB()
 	err := db.Create(gr).Error
