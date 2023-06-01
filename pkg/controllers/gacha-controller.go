@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 
 	"github.com/iamananya/ginco-task/pkg/models"
 	"github.com/iamananya/ginco-task/pkg/utils"
@@ -67,11 +68,18 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the user from the context
-	user := r.Context().Value("user").(models.User)
+	user, ok := r.Context().Value("user").(models.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var updateUser models.User
-	utils.ParseBody(r, &updateUser)
-	fmt.Print(user)
+	err := utils.ParseBody(r, &updateUser)
+	if err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
 
 	if updateUser.Name != "" {
 		user.Name = updateUser.Name
@@ -80,9 +88,9 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		user.Token = updateUser.Token
 	}
 
-	err := models.UpdateUser(&user)
+	err = models.UpdateUser(&user)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -135,21 +143,57 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 	}
 	characterPool := generateCharacterPool(characters)
 	response := models.GachaDrawResponse{
-		Results: []models.CharacterResponse{},
+		Results: make([]models.CharacterResponse, reqBody.Times),
 	}
-	// fmt.Println(reqBody.NumTrials)
-	for i := 0; i < reqBody.Times; i++ {
-		character, err := models.DrawCharacter(characters, characterPool) // Simulate drawing a character
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		fmt.Println(character)
-		response.Results = append(response.Results, models.CharacterResponse{
-			CharacterID: fmt.Sprintf("Character-%d", character.ID),
-			Name:        character.Name,
-		})
 
+	// A buffered channel to receive the drawn characters
+	drawnCharacters := make(chan models.CharacterResponse, reqBody.Times)
+
+	//  WaitGroup to synchronize goroutines
+	var wg sync.WaitGroup
+
+	// Worker pool with a fixed number of goroutines
+	numWorkers := 10
+	tasks := make(chan int, reqBody.Times)
+
+	// Start goroutines to process tasks concurrently
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range tasks {
+				character, err := models.DrawCharacter(characters, characterPool) // Simulate drawing a character
+				if err != nil {
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+					return
+				}
+				characterResponse := models.CharacterResponse{
+					CharacterID: fmt.Sprintf("Character-%d", character.ID),
+					Name:        character.Name,
+					Rarity:      character.Rarity,
+				}
+				drawnCharacters <- characterResponse
+			}
+		}()
+	}
+
+	// Enqueue tasks
+	for i := 0; i < reqBody.Times; i++ {
+		tasks <- i
+	}
+
+	// Close the tasks channel and wait for all goroutines to finish
+	go func() {
+		close(tasks)
+		wg.Wait()
+		close(drawnCharacters)
+	}()
+
+	// Collect the drawn characters from the channel and populate the response
+	i := 0
+	for characterResponse := range drawnCharacters {
+		response.Results[i] = characterResponse
+		i++
 	}
 
 	respBody, err := json.Marshal(response)
@@ -161,8 +205,8 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(respBody)
-
 }
+
 func generateCharacterPool(characters []models.Character) []models.Character {
 	var characterPool []models.Character
 
