@@ -68,11 +68,18 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the user from the context
-	user := r.Context().Value("user").(*models.User)
+	user, ok := r.Context().Value("user").(models.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var updateUser models.User
-	utils.ParseBody(r, &updateUser)
-	fmt.Print(user)
+	err := utils.ParseBody(r, &updateUser)
+	if err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
 
 	if updateUser.Name != "" {
 		user.Name = updateUser.Name
@@ -81,9 +88,9 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		user.Token = updateUser.Token
 	}
 
-	err := models.UpdateUser(user)
+	err = models.UpdateUser(&user)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
