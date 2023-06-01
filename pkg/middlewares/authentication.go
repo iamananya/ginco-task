@@ -17,16 +17,18 @@ func AuthenticationMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		users, err := models.GetUserByToken(token)
+		var user models.User
+		err := models.GetUserByToken(token, &user)
 		if err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
-		if len(users) == 0 {
+
+		if user.ID == 0 {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		user := users[0]
+
 		ctx := context.WithValue(r.Context(), "user", user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

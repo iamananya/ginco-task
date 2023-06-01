@@ -62,6 +62,7 @@ type GachaDrawResponse struct {
 type CharacterResponse struct {
 	CharacterID string `json:"characterID"`
 	Name        string `json:"name"`
+	Rarity      string `json:"rarity"`
 }
 
 func init() {
@@ -112,12 +113,11 @@ func generateRandomString(length int) string {
 }
 
 // Function used to verify user token-----
-func GetUserByToken(token string) ([]User, error) {
-	var users []User
-	if err := db.Where("token = ?", token).Find(&users).Error; err != nil {
-		return nil, err
+func GetUserByToken(token string, user *User) error {
+	if err := db.Where("token = ?", token).First(user).Error; err != nil {
+		return err
 	}
-	return users, nil
+	return nil
 }
 
 func UpdateUser(user *User) error {
