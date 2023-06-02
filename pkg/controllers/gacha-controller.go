@@ -147,21 +147,15 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 	response := models.GachaDrawResponse{
 		Results: make([]models.CharacterResponse, reqBody.Times),
 	}
+	// Create a slice to store the user characters for batch insert
+	userCharacters := make([]*models.UserCharacter, reqBody.Times)
 
 	for i := 0; i < reqBody.Times; i++ {
-		character, err := DrawCharacter(&characterPool)
+		character, err := DrawCharacter(characterPool)
 		if err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
-
-		characterResponse := models.CharacterResponse{
-			CharacterID: fmt.Sprintf("Character-%d", character.ID),
-			Name:        character.Name,
-			Rarity:      character.Rarity,
-		}
-		response.Results[i] = characterResponse
-		// Store the character in the database for the user
 		userCharacter := models.UserCharacter{
 			UserID:            user.ID,
 			CharacterID:       character.ID,
@@ -175,8 +169,20 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 			Synergy:           character.Synergy,
 			Evolution:         character.Evolution,
 		}
-		userCharacter.CreateUserCharacter()
+		// Store the user character in the batch slice
+		userCharacters[i] = &userCharacter
 
+		characterResponse := models.CharacterResponse{
+			CharacterID: fmt.Sprintf("Character-%d", character.ID),
+			Name:        character.Name,
+			Rarity:      character.Rarity,
+		}
+		response.Results[i] = characterResponse
+	}
+	// Batch insert user characters into the database
+	if err := models.CreateUserCharacterBatch(userCharacters); err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	respBody, err := json.Marshal(response)
@@ -190,8 +196,8 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 	w.Write(respBody)
 }
 
-func GenerateCharacterPool(characters []models.Character) []*models.Character {
-	characterPool := make([]*models.Character, 0)
+func GenerateCharacterPool(characters []models.Character) []models.Character {
+	characterPool := make([]models.Character, 0)
 	probabilityMap := make(map[uint]int)
 
 	for _, character := range characters {
@@ -220,31 +226,31 @@ func GenerateCharacterPool(characters []models.Character) []*models.Character {
 	return characterPool
 }
 
-func FindCharacterByID(characters []models.Character, characterID uint) *models.Character {
+func FindCharacterByID(characters []models.Character, characterID uint) models.Character {
 	for _, character := range characters {
 		if character.ID == characterID {
-			return &character
+			return character
 		}
 	}
-	return nil
+	return models.Character{}
 }
 
-func DrawCharacter(characterPool *[]*models.Character) (*models.Character, error) {
-	poolSize := len(*characterPool)
+func DrawCharacter(characterPool []models.Character) (models.Character, error) {
+	poolSize := len(characterPool)
 	if poolSize == 0 {
-		return nil, errors.New("empty character pool")
+		return models.Character{}, errors.New("empty character pool")
 	}
 
 	// Randomly select a character from the pool
 	randIndex, err := rand.Int(rand.Reader, big.NewInt(int64(poolSize)))
 	if err != nil {
-		return nil, errors.New("failed to generate random number")
+		return models.Character{}, errors.New("failed to generate random number")
 	}
 	index := int(randIndex.Int64())
-	character := (*characterPool)[index]
+	character := characterPool[index]
 
 	// Remove the selected character from the pool
-	*characterPool = append((*characterPool)[:index], (*characterPool)[index+1:]...)
+	characterPool = append(characterPool[:index], characterPool[index+1:]...)
 
 	return character, nil
 }

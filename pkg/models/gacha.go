@@ -135,10 +135,37 @@ func GetAllCharacters() ([]Character, error) {
 	}
 	return characters, nil
 }
-func (uc *UserCharacter) CreateUserCharacter() error {
+func CreateUserCharacterBatch(userCharacters []*UserCharacter) error {
 	db := config.GetDB()
-	if err := db.Create(uc).Error; err != nil {
+	tx := db.Begin()
+	batchSize := 1000 // Adjust the batch size as per your requirements
+
+	for i := 0; i < len(userCharacters); i += batchSize {
+		end := i + batchSize
+		if end > len(userCharacters) {
+			end = len(userCharacters)
+		}
+
+		batch := userCharacters[i:end]
+		if err := createBatch(tx, batch); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
 		return err
+	}
+
+	return nil
+}
+
+func createBatch(tx *gorm.DB, batch []*UserCharacter) error {
+	for _, uc := range batch {
+		if err := tx.Create(&uc).Error; err != nil {
+			return err
+		}
 	}
 	return nil
 }
