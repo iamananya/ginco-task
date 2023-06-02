@@ -135,11 +135,13 @@ func GetAllCharacters() ([]Character, error) {
 	}
 	return characters, nil
 }
-func (uc *UserCharacter) CreateUserCharacter() *UserCharacter {
-	db.Create(&uc)
-	return uc
+func (uc *UserCharacter) CreateUserCharacter() error {
+	db := config.GetDB()
+	if err := db.Create(uc).Error; err != nil {
+		return err
+	}
+	return nil
 }
-
 func (gr *GachaResult) SaveGachaResult() error {
 	db := config.GetDB()
 	err := db.Create(gr).Error

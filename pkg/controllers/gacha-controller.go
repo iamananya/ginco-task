@@ -161,6 +161,22 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 			Rarity:      character.Rarity,
 		}
 		response.Results[i] = characterResponse
+		// Store the character in the database for the user
+		userCharacter := models.UserCharacter{
+			UserID:            user.ID,
+			CharacterID:       character.ID,
+			AttackPower:       character.AttackPower,
+			Defense:           character.Defense,
+			Speed:             character.Speed,
+			HitPoints:         character.HitPoints,
+			CriticalHitRate:   character.CriticalHitRate,
+			ElementalAffinity: character.ElementalAffinity,
+			Rarity:            character.Rarity,
+			Synergy:           character.Synergy,
+			Evolution:         character.Evolution,
+		}
+		userCharacter.CreateUserCharacter()
+
 	}
 
 	respBody, err := json.Marshal(response)
