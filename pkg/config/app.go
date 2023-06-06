@@ -10,7 +10,7 @@ var (
 )
 
 func Connect() {
-	d, err := gorm.Open("mysql", "root:1201@/gacharest?charset=utf8&parseTime=True&loc=Local")
+	d, err := gorm.Open("mysql", "root:1201@/multiple_gacha?charset=utf8&parseTime=True&loc=Local")
 	if err != nil {
 		panic(err)
 	}
