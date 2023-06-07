@@ -186,7 +186,7 @@ func CreateUserCharacterBatch(userCharacters []*UserCharacter) error {
 		}
 
 		batch := userCharacters[i:end]
-		if err := createBatch(tx, batch); err != nil {
+		if err := batchCreation(tx, batch); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -200,7 +200,7 @@ func CreateUserCharacterBatch(userCharacters []*UserCharacter) error {
 	return nil
 }
 
-func createBatch(tx *gorm.DB, batch []*UserCharacter) error {
+func batchCreation(tx *gorm.DB, batch []*UserCharacter) error {
 	for _, uc := range batch {
 		if err := tx.Create(&uc).Error; err != nil {
 			return err
