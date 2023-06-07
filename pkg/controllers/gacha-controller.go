@@ -150,25 +150,20 @@ func HandleGachaDraw(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error in characters", http.StatusInternalServerError)
 		return
 	}
-	// fmt.Println(characters)
 	var characterPointers []*models.Character
-	fmt.Println("Appended characters")
 	for _, character := range characters {
 		charac := character
 		characterPointers = append(characterPointers, &charac)
 	}
-	fmt.Println("character pointers", characterPointers)
 	characterPool := generateCharacterPool(characterPointers, gacha.RarityR, gacha.RaritySR, gacha.RaritySSR, reqBody.Times)
-	// fmt.Println("character pool", characterPool)
 	response := models.GachaDrawResponse{
 		Results: make([]models.CharacterResponse, reqBody.Times),
 	}
 	// Create a slice to store the user characters for batch insert
 	userCharacters := make([]*models.UserCharacter, reqBody.Times)
-	// fmt.Println("User Characters", userCharacters)
 
 	for i := 0; i < reqBody.Times; i++ {
-		character, err := drawCharacter(characterPool)
+		character, err := drawCharacter(&characterPool)
 		if err != nil {
 			http.Error(w, "Internal Server Error in drawing characters", http.StatusInternalServerError)
 			return
@@ -229,7 +224,6 @@ func generateCharacterPool(characters []*models.Character, rarityR, raritySR, ra
 		rarity := character.Rarity
 		draws := rarityProbabilities[rarity]
 		rarityDraws := int(draws * float64(numDraws))
-
 		for i := 0; i < rarityDraws; i++ {
 			characters_all = append(characters_all, character.Name)
 		}
@@ -242,13 +236,10 @@ func generateCharacterPool(characters []*models.Character, rarityR, raritySR, ra
 			return characterPool
 		}
 		index := int(randIndex.Int64())
-
 		characterName := characters_all[index]
 		character := findCharacterByName(characters, characterName)
 		characterPool = append(characterPool, character)
-
 		// Remove the selected character from the pool
-		// characters_all = append(characters_all[:index], characters_all[index+1:]...)
 		characters_all[index] = characters_all[poolSize-i-1]
 		characters_all = characters_all[:poolSize-i-1]
 
@@ -264,8 +255,8 @@ func findCharacterByName(characters []*models.Character, name string) *models.Ch
 	}
 	return nil
 }
-func drawCharacter(characterPool []*models.Character) (*models.Character, error) {
-	poolSize := len(characterPool)
+func drawCharacter(characterPool *[]*models.Character) (*models.Character, error) {
+	poolSize := len(*characterPool)
 	if poolSize == 0 {
 		return nil, errors.New("empty character pool")
 	}
@@ -275,9 +266,8 @@ func drawCharacter(characterPool []*models.Character) (*models.Character, error)
 		return nil, errors.New("failed to generate random number")
 	}
 	index := int(randIndex.Int64())
-	character := characterPool[index]
-
-	// Remove the selected character from the pool
-	characterPool = append(characterPool[:index], characterPool[index+1:]...)
+	character := (*characterPool)[index]
+	// Used the reference of character pool to update the size of the pool
+	*characterPool = append((*characterPool)[:index], (*characterPool)[index+1:]...)
 	return character, nil
 }
